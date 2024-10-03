@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import Button from "./Button";
 import { services } from "../data/services";
+import { Service } from "../types";
+import axios from "axios";
 
 const BookingForm: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +13,8 @@ const BookingForm: React.FC = () => {
     service: "",
     additional_notes: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -23,8 +27,31 @@ const BookingForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement form submission logic
-    console.log(formData);
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      const response = await axios.post("/api/bookAppointment", formData);
+      if (response.status === 201) {
+        setMessage(
+          "Booking successful! We'll contact you to confirm the details."
+        );
+        setFormData({
+          full_name: "",
+          instagram_handle: "",
+          phone_number: "",
+          service: "",
+          additional_notes: "",
+        });
+      } else {
+        throw new Error("Failed to book appointment");
+      }
+    } catch (error) {
+      console.error("Error booking appointment:", error);
+      setMessage("Error booking appointment. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -70,7 +97,6 @@ const BookingForm: React.FC = () => {
           name="instagram_handle"
           value={formData.instagram_handle}
           onChange={handleChange}
-          required
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
@@ -109,7 +135,7 @@ const BookingForm: React.FC = () => {
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">Select a service</option>
-          {services.map((service) => (
+          {services.map((service: Service) => (
             <option key={service.name} value={service.name}>
               {service.name} ({service.duration})
             </option>
@@ -135,8 +161,22 @@ const BookingForm: React.FC = () => {
       </div>
 
       <Button type="submit" variant="primary">
-        Book Now
+        {isLoading ? "Booking..." : "Book Now"}
       </Button>
+
+      {message && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className={`mt-4 p-2 rounded ${
+            message.includes("Error")
+              ? "bg-red-100 text-red-700"
+              : "bg-green-100 text-green-700"
+          }`}
+        >
+          {message}
+        </motion.p>
+      )}
     </motion.form>
   );
 };

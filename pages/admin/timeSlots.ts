@@ -2,13 +2,13 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { db } from "../../utils/firebase";
 import {
   collection,
+  addDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
   query,
   where,
   getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
 } from "firebase/firestore";
 
 const adminCode = process.env.NEXT_PUBLIC_ADMIN_CODE;
@@ -39,10 +39,10 @@ export default async function handler(
           where("date", "==", date)
         );
         const querySnapshot = await getDocs(q);
-        const timeSlots = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const timeSlots: any[] = [];
+        querySnapshot.forEach((doc) => {
+          timeSlots.push({ id: doc.id, ...doc.data() });
+        });
         return res.status(200).json(timeSlots);
       } catch (error) {
         console.error("Error fetching time slots:", error);
@@ -58,10 +58,9 @@ export default async function handler(
           end_time: endTime,
           available: true,
         });
-        return res.status(201).json({
-          id: docRef.id,
-          message: "Time slot added successfully",
-        });
+        return res
+          .status(201)
+          .json({ id: docRef.id, message: "Time slot added successfully" });
       } catch (error) {
         console.error("Error adding time slot:", error);
         return res.status(500).json({ error: "Error adding time slot" });

@@ -1,7 +1,6 @@
-// scripts/populate-time-slots.ts
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc } from "firebase/firestore";
-import { addDays, format } from "date-fns";
+const { initializeApp } = require("firebase/app");
+const { getFirestore, collection, addDoc } = require("firebase/firestore");
+const { addDays, format } = require("date-fns");
 
 const firebaseConfig = {
   apiKey: "AIzaSyBE0VVv6fFQfQRaHN2TOqSqquEbyxsonNE",

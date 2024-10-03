@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { supabase } from "../../../utils/supabaseClient";
+import { db } from "../../../utils/firebase";
+import { collection, addDoc } from "firebase/firestore";
 
 export default async function handler(
   req: NextApiRequest,
@@ -9,16 +10,16 @@ export default async function handler(
     const { date, startTime, endTime } = req.body;
 
     try {
-      const { data, error } = await supabase.from("time_slots").insert({
+      const docRef = await addDoc(collection(db, "time_slots"), {
         date,
         start_time: startTime,
         end_time: endTime,
         available: true,
       });
 
-      if (error) throw error;
-
-      res.status(200).json({ message: "Time slot added successfully", data });
+      res
+        .status(200)
+        .json({ message: "Time slot added successfully", id: docRef.id });
     } catch (error: unknown) {
       console.error("Error adding time slot:", error);
       res.status(500).json({

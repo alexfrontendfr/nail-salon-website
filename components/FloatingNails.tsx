@@ -12,14 +12,14 @@ const nailDesigns = [
 
 const FloatingNails: React.FC = () => {
   return (
-    <div className="fixed inset-0 pointer-events-none z-50">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
       {nailDesigns.map((nail) => (
         <motion.div
           key={nail.id}
           className="absolute w-16 h-16"
           style={{
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 80}%`,
+            left: `${Math.random() * 80}%`,
           }}
           animate={{
             y: [0, -20, 0],

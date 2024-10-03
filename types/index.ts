@@ -1,3 +1,7 @@
+import { DatePickerProps as ReactDatePickerProps } from "react-datepicker";
+
+export type DatePickerProps = ReactDatePickerProps;
+
 export interface Service {
   name: string;
   description: string;
@@ -7,7 +11,7 @@ export interface Service {
 }
 
 export interface TimeSlot {
-  id: number;
+  id: string;
   date: string;
   start_time: string;
   end_time: string;

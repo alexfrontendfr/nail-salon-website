@@ -1,12 +1,36 @@
-// components/BookingSteps.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { services } from "../data/services";
-import TimeSlotSelection from "./TimeSlotSelection";
-import axios from "axios";
+import dynamic from "next/dynamic";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  doc,
+  updateDoc,
+  getDoc,
+} from "firebase/firestore";
+import { db } from "../utils/firebase";
 import { Service, TimeSlot } from "../types";
+import axios from "axios";
+import {
+  format,
+  addMinutes,
+  parse,
+  isBefore,
+  differenceInMinutes,
+} from "date-fns";
+import { services } from "../data/services";
+import Loading from "./Loading";
+
+const DatePicker = dynamic(
+  () =>
+    import("react-datepicker").then((mod) => mod.default) as Promise<
+      React.ComponentType<any>
+    >,
+  { ssr: false }
+);
 
 const steps = [
   "Select Service",
@@ -24,29 +48,54 @@ const BookingSteps: React.FC = () => {
     email: "",
     phone: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
     null
   );
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
+
+  const fetchAvailableTimeSlots = useCallback(async () => {
+    if (!selectedDate || !selectedService) return;
+
+    setIsLoading(true);
+    const q = query(
+      collection(db, "time_slots"),
+      where("date", "==", format(selectedDate, "yyyy-MM-dd")),
+      where("available", "==", true)
+    );
+    const querySnapshot = await getDocs(q);
+    const slots: TimeSlot[] = [];
+    querySnapshot.forEach((doc) => {
+      const slot = { id: doc.id, ...doc.data() } as TimeSlot;
+      const slotDuration = getSlotDuration(slot.start_time, slot.end_time);
+      if (slotDuration >= parseInt(selectedService.duration)) {
+        slots.push(slot);
+      }
+    });
+    setAvailableTimeSlots(slots);
+    setIsLoading(false);
+  }, [selectedDate, selectedService]);
+
+  useEffect(() => {
+    if (selectedDate && selectedService) {
+      fetchAvailableTimeSlots();
+    }
+  }, [selectedDate, selectedService, fetchAvailableTimeSlots]);
+
+  const getSlotDuration = (start: string, end: string) => {
+    const startTime = parse(start, "HH:mm", new Date());
+    const endTime = parse(end, "HH:mm", new Date());
+    return differenceInMinutes(endTime, startTime);
+  };
 
   const handleServiceSelection = (service: Service) => {
     setSelectedService(service);
     setCurrentStep(1);
   };
 
-  const handleDateSelection = async (date: Date | null) => {
+  const handleDateSelection = (date: Date | null) => {
     setSelectedDate(date);
-    if (date) {
-      try {
-        const response = await axios.get<TimeSlot[]>(
-          `/api/timeSlots?date=${date.toISOString().split("T")[0]}`
-        );
-        setAvailableTimeSlots(response.data);
-      } catch (error) {
-        console.error("Error fetching time slots", error);
-        // You might want to show an error message to the user here
-      }
-    }
+    setSelectedTimeSlot(null);
   };
 
   const handleTimeSlotSelection = (timeSlot: TimeSlot) => {
@@ -59,8 +108,22 @@ const BookingSteps: React.FC = () => {
     setBookingDetails((prev) => ({ ...prev, [name]: value }));
   };
 
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+    if (!bookingDetails.name.trim()) newErrors.name = "Name is required";
+    if (!/^\S+@\S+\.\S+$/.test(bookingDetails.email))
+      newErrors.email = "Invalid email address";
+    if (!/^\d{10}$/.test(bookingDetails.phone))
+      newErrors.phone = "Invalid phone number";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
     if (!selectedService || !selectedDate || !selectedTimeSlot) {
       console.error("Missing required booking information");
       return;
@@ -72,16 +135,17 @@ const BookingSteps: React.FC = () => {
         date: selectedDate.toISOString().split("T")[0],
         timeSlotId: selectedTimeSlot.id,
       });
-      if (response.data.message === "Appointment booked successfully") {
+
+      if (response.status === 201) {
         setCurrentStep(3);
       } else {
-        throw new Error("Unexpected response from server");
+        throw new Error("Failed to book appointment");
       }
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("Error booking appointment", error);
       alert(
         `Error booking appointment: ${
-          error instanceof Error ? error.message : "Unknown error occurred"
+          error instanceof Error ? error.message : "Unknown error"
         }`
       );
     }
@@ -120,7 +184,7 @@ const BookingSteps: React.FC = () => {
           transition={{ duration: 0.5 }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
-          {services.map((service) => (
+          {services.map((service: Service) => (
             <button
               key={service.name}
               onClick={() => handleServiceSelection(service)}
@@ -152,11 +216,32 @@ const BookingSteps: React.FC = () => {
             minDate={new Date()}
             className="mx-auto"
           />
-          {selectedDate && (
-            <TimeSlotSelection
-              timeSlots={availableTimeSlots}
-              onSelectTimeSlot={handleTimeSlotSelection}
-            />
+          {isLoading ? (
+            <Loading />
+          ) : (
+            selectedDate && (
+              <div className="grid grid-cols-3 gap-4">
+                {availableTimeSlots.map((slot) => (
+                  <motion.button
+                    key={slot.id}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="p-2 rounded-md bg-primary text-white hover:bg-secondary"
+                    onClick={() => handleTimeSlotSelection(slot)}
+                  >
+                    {format(
+                      parse(slot.start_time, "HH:mm", new Date()),
+                      "h:mm a"
+                    )}{" "}
+                    -{" "}
+                    {format(
+                      parse(slot.end_time, "HH:mm", new Date()),
+                      "h:mm a"
+                    )}
+                  </motion.button>
+                ))}
+              </div>
+            )
           )}
         </motion.div>
       )}
@@ -175,8 +260,13 @@ const BookingSteps: React.FC = () => {
             value={bookingDetails.name}
             onChange={handleInputChange}
             required
-            className="w-full p-2 border rounded-md"
+            className={`w-full p-2 border rounded-md ${
+              errors.name ? "border-red-500" : ""
+            }`}
           />
+          {errors.name && (
+            <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+          )}
           <input
             type="email"
             name="email"
@@ -184,8 +274,13 @@ const BookingSteps: React.FC = () => {
             value={bookingDetails.email}
             onChange={handleInputChange}
             required
-            className="w-full p-2 border rounded-md"
+            className={`w-full p-2 border rounded-md ${
+              errors.email ? "border-red-500" : ""
+            }`}
           />
+          {errors.email && (
+            <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+          )}
           <input
             type="tel"
             name="phone"
@@ -193,8 +288,13 @@ const BookingSteps: React.FC = () => {
             value={bookingDetails.phone}
             onChange={handleInputChange}
             required
-            className="w-full p-2 border rounded-md"
+            className={`w-full p-2 border rounded-md ${
+              errors.phone ? "border-red-500" : ""
+            }`}
           />
+          {errors.phone && (
+            <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+          )}
           <button
             type="submit"
             className="w-full bg-primary text-white font-bold py-2 px-4 rounded-md hover:bg-secondary transition-colors"
@@ -215,7 +315,7 @@ const BookingSteps: React.FC = () => {
           </h3>
           <p>Thank you for booking with Nail Factory Groningen.</p>
           <p>
-            We&apos;ll see you on {selectedDate?.toDateString()} at{" "}
+            We will see you on {selectedDate?.toDateString()} at{" "}
             {selectedTimeSlot?.start_time} for your {selectedService?.name}{" "}
             appointment.
           </p>

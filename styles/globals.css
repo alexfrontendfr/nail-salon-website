@@ -18,25 +18,49 @@ h6 {
 }
 
 .react-datepicker {
-  font-family: "Poppins", sans-serif;
-  border: none;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
 
 .react-datepicker__header {
-  background-color: #e96989;
-  border-bottom: none;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+  padding: 10px;
 }
 
-.react-datepicker__current-month,
-.react-datepicker__day-name {
-  color: white;
+.react-datepicker__day {
+  width: 2rem;
+  line-height: 2rem;
+  margin: 0.166rem;
 }
 
 .react-datepicker__day--selected {
   background-color: #e96989;
+  color: white;
 }
 
-.react-datepicker__day:hover {
-  background-color: #f8a5b6;
+.time-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.time-slot-button {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.time-slot-button:hover {
+  background-color: #f0f0f0;
+}
+
+.time-slot-button.selected {
+  background-color: #e96989;
+  color: white;
 }

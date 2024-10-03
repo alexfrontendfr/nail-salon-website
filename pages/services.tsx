@@ -15,7 +15,7 @@ const ServicesPage: NextPage = () => {
           content="Explore our range of nail care services at Nail Factory Groningen."
         />
       </Head>
-      <div className="relative bg-gradient-to-b from-pink-100 to-white overflow-hidden py-16">
+      <div className="relative bg-gradient-to-b from-pink-100 to-white py-16">
         <FloatingNails />
         <div className="relative z-10">
           <ServicesShowcase showAll />
