@@ -3,12 +3,12 @@ const { getFirestore, collection, addDoc } = require("firebase/firestore");
 const { addDays, format } = require("date-fns");
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBE0VVv6fFQfQRaHN2TOqSqquEbyxsonNE",
-  authDomain: "nail-salon-website-40049.firebaseapp.com",
-  projectId: "nail-salon-website-40049",
-  storageBucket: "nail-salon-website-40049.appspot.com",
-  messagingSenderId: "360712691544",
-  appId: "1:360712691544:web:7826caf2529996a50f4f2d",
+  apiKey: "replace-with-your-own",
+  authDomain: "replace-with-your-own",
+  projectId: "replace-with-your-own",
+  storageBucket: "replace-with-your-own",
+  messagingSenderId: "replace-with-your-own",
+  appId: "replace-with-your-own",
 };
 
 const app = initializeApp(firebaseConfig);
